@@ -1,1 +1,1 @@
-# activity_playing_with_gss
+# Playing around with the General Social Survey
