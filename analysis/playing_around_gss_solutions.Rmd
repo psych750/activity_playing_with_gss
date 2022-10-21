@@ -4,11 +4,11 @@ author: "Gary Lupyan"
 date: "10/19/2021"
 output: 
   html_document:
-    css: style.css
+    toc: yes
     toc_float: yes
     theme: cerulean
-  number_sections: yes
-  toc: no
+    number_sections: no
+    css: style.css
 ---
 
 ```{r message=FALSE, warning=FALSE}
@@ -20,7 +20,9 @@ library(ggplot2)
 library(DT)
 ```
 
-# Load in the data
+# Load in data
+
+We're loading in the SPSS-formatted data from GSS year 2016. Need foreign::spss.get to read the data
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
 gss <- spss.get("../data/GSS2016.sav", use.value.labels=TRUE,lowernames=TRUE)
 ```
@@ -34,8 +36,8 @@ Whenever we're loading in data from external sources, especially data as complex
 
 The variable `age` is the respondent's age. Simple enough. Let's try to plot the age distribution using `hist()`. Hmmm...
 
-```{r}
-hist(gss$age)
+```{r include=FALSE}
+#hist(gss$age)
 ```
 
 Hmm.. what's going on?
@@ -110,7 +112,16 @@ Let's look at respondents' happiness as a function of self-reported health (`hea
 gss %>% drop_na(health) %>% group_by(health) %>% summarize(happy = mean(as.numeric(happy),na.rm=TRUE))
 ```
 
+See the problem?
+```{r}
+levels(gss$happy)
+```
 
+Let's fix it:
+
+```{r}
+gss$happy_rev <- fct_rev(gss$happy)
+```
 
 
 # Do people know that the earth goes around the sun?
@@ -232,11 +243,6 @@ Feel free to bin age into discrete groups (20-30, 31-40 etc.). The sjmisc packag
 
 Let's start by looking at happiness broken down by whether people have children
 ```{r}
-
-mean_round <- function(numbers,sig_digits){
- return(round(mean(numbers),sig_digits))
-}
-
 gss %>% drop_na(happy,childs) %>% 
   mutate(happiness = as.numeric(happy_rev)) %>%
   mutate(has_children = childs!=0) %>%
@@ -453,4 +459,27 @@ gss %>% drop_na(polviews) %>% group_by(polviews) %>%
 ```
 Pretty striking...  Endorsement of human evolution plummets from 93% to 19% as we go from liberal to conservative while endorsement of elephant evolution barely changes. Also check out the extremely liberal group. In this group 93% endorse human evolution, but only 81% endorse elephant evolution... hmmm.
 
+
+## Helper functions
+
+
+Notice how I've been wrapping mean() inside round. Alogn with na.rm=TRUE and wrapping inside as.numeric.. That's a lot of typing. One option is to use a helper function, like so:
+
+```{r}
+mean_round <- function(numbers,sig_digits=2){
+ return(round(mean(as.numeric(numbers),na.rm=TRUE),sig_digits))
+}
 ```
+
+Now we can call `mean_round()`, like so:
+
+```{r}
+gss %>% drop_na(polviews) %>% group_by(polviews) %>%
+  summarize(evolved_humans = mean_round(evolved=="True"), 
+               evolved_elephants = mean_round(evolved2=="True"),
+               diff_humans_elephants = evolved_humans - evolved_elephants,n=n())
+
+```
+On the upside, less typing and cleaner code. On the downside, if someone else uses your code, they'll need your helper function.
+
+
