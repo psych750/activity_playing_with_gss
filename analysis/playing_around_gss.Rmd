@@ -4,11 +4,11 @@ author: "Gary Lupyan"
 date: "10/19/2021"
 output: 
   html_document:
-    css: style.css
+    toc: yes
     toc_float: yes
     theme: cerulean
-  number_sections: yes
-  toc: no
+    number_sections: no
+    css: style.css
 ---
 
 ```{r message=FALSE, warning=FALSE}
@@ -20,9 +20,11 @@ library(ggplot2)
 library(DT)
 ```
 
-# Load in the data
+# Load in data
+
+We're loading in the SPSS-formatted data from GSS year 2018. Need foreign::spss.get to read the data
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
-gss <- spss.get("../data/GSS2016.sav", use.value.labels=TRUE,lowernames=TRUE)
+gss <- spss.get("../data/GSS2018.sav", use.value.labels=TRUE,lowernames=TRUE)
 ```
 
 # Two things to watch out for when importing data
@@ -32,15 +34,15 @@ gss <- spss.get("../data/GSS2016.sav", use.value.labels=TRUE,lowernames=TRUE)
 Whenever we're loading in data from external sources, especially data as complex as the GSS, we need to make sure that we're importing what we think we're importing. Let's look at a couple variables and see what kind of errors we could accidentally make
 
 
-The variable `age` is the respondent's age. Simple enough. Let's try to plot the age distribution using `hist(gss$age)`. Hmmm...
+The variable `age` is the respondent's age. Simple enough. Let's try to plot the age distribution using `hist()`. Hmmm...
 
-```{r}
-
+```{r include=FALSE}
+#hist(gss$age)
 ```
 
-What's going on? Try checking with `summary(gss$age)`
+Hmm.. what's going on?
 ```{r}
-
+summary(gss$age)
 ```
 
 Uh huh... how do we fix it?
@@ -52,6 +54,7 @@ gss$age_recoded = gss$age %>%
 
 mean(gss$age_recoded,na.rm=TRUE)
 ```
+
 Ok.. mean is 32.. seems reasonable? Is it correct though? Let's look at a histogram. What do you notice?
 ```{r}
 hist(gss$age_recoded)
@@ -63,21 +66,36 @@ How do we fix this?
 Now try it yourself by fixing the coding of `realrinc` (respondent's annual income adjusted to 1986 dollars).
 
 ```{r}
+gss$age_recoded = gss$age %>% 
+  fct_recode("90"="89 OR OLDER") %>%
+  as.character %>%
+  as.numeric
 
+mean(gss$age_recoded,na.rm=TRUE)
 ```
 
-What's the mean and median income of participants younger than 25 in 2022 dollars? To get 2016 (where these data are from) dollars, multiply by 2.19. How many participants are there in this dataset who're younger than 25? 
+What's the mean and median income of participants younger than 25 in 2018 dollars? To get 2018 dollars (where these data are from), multiply realrinc (1986 dollars) by 2.29. 
 
 ```{r}
+gss$age_recoded = gss$age %>% 
+  fct_recode("90"="89 OR OLDER") %>% 
+  as.character %>%
+  as.numeric
 
-
+gss <- gss %>% mutate(realrinc = as.numeric(as.character(realrinc)))
+gss <- gss %>% mutate(realrinc_2016 = realrinc*2.29)
 ```
 
-Break it down by the participant's gender (`sex`). Do you notice anything about the mean vs. median for males vs. females? What is this telling you?
+How many participants are there in this dataset who're younger than 25? 
+ Break it down by the participant's gender (`sex`). Do you notice anything about the mean vs. median for males vs. females? What is this telling you?
 
+
+Solution
 ```{r}
-
+gss %>% filter(age_recoded<25) %>% 
+  summarize(realrinc_2016_mean = mean(realrinc_2016,na.rm=TRUE),realrinc_2016_med = median(realrinc_2016,na.rm=TRUE),n=n())
 ```
+
 
 
 ## Factor levels
@@ -96,6 +114,16 @@ Let's look at respondents' happiness as a function of self-reported health (`hea
 gss %>% drop_na(health) %>% group_by(health) %>% summarize(happy = mean(as.numeric(happy),na.rm=TRUE))
 ```
 
+See the problem?
+```{r}
+levels(gss$happy)
+```
+
+Let's fix it:
+
+```{r}
+gss$happy_rev <- fct_rev(gss$happy)
+```
 
 
 # Do people know that the earth goes around the sun?
@@ -195,11 +223,19 @@ gss %>% drop_na(polviews,degree,evolved) %>%
 
 ```
 
+What does a regression model look like in the tidyverse? Simple! Let's test for the main effects and interaction of `polviews` and `degree` on `evolution` using logistic regression (because our outcome variable is binary). We're going to use `scale` to center the variables. We don't need to explicitly use `drop_na` because glm will automatically drop missing values.
+```{r}
+
+gss %>% glm(I(evolved=="True")~scale(as.numeric(polviews))*scale(as.numeric(degree)),data=.,family=binomial) %>% summary
+
+```
+
+
 # Now it's your turn!
 
 You can look up info on the variables at https://gssdataexplorer.norc.org/variables/vfilter If you just need to quickly look up the description of the variable use `head(gss$var_name)` or summary(gss$var_name) to list its factors (which will be listed in order). Note that when the data were imported from SPSS, all variables were imported as factors, hence the need to convert to numeric as needed.
 
-## 1. Children and happiness
+## Children and happiness
 Are people with children (`childs!=0`) happier (`happy`) than people without children? Does this relationship depend on the respondent's gender? (`sex`) Their age? (`age`)? 
 
 ::: {.notebox}
@@ -207,18 +243,12 @@ Note
 Feel free to bin age into discrete groups (20-30, 31-40 etc.). The sjmisc package has nice functions for this. See the cheat sheet.
 :::
 
-Start by looking at happiness broken down by whether people have children
-```{r}
-
-```
-
-Now break it down by the respondent's gender:
 ```{r}
 
 ```
 
 
-## 2. Income and happiness
+## Income and happiness
 
 What's the relationship between respondent's income (`realrinc`) and happiness (`happy`)? Use `sjmisc::split_var` to bin income into quintiles (i.e., 5 equal groups). How does this relationship vary for people who have a college degree or higher vs. people who don't? 
 
@@ -230,50 +260,31 @@ Remember to convert income to numeric using `as.numeric(as.character(realrinc)))
 
 ::: {.notebox}
 **Tip**
-
-`realrinc` is income in 1986 dollars. To convert to 2016 dollars, multiply by 2.19. Also make sure you interpret the value of `happy` correctly.
+`realrinc` is income in 1986 dollars. To convert to 2018 dollars, multiply by 2.29. Also make sure you interpret the value of `happy` correctly.
 :::
 
 ```{r}
 
-
 ```
 
-Now let's see how it look broken down by education, splitting up by college or greater vs. others and for ease of interpretation, spreading by the education variable. Let's also use this example to illustrate column renaming 
-```{r}
-levels(gss$degree) #BACHELOR is level factor 4, so >=4 is greater than college
-
-gss %>% drop_na(realrinc,happy,degree) %>% 
-  mutate(realrinc = as.numeric(as.character(realrinc))*2.19, 
-         happy = as.numeric(happy), is_college = as.numeric(degree) >= 4) %>%
-  split_var(realrinc,n=5) %>% head # remove head and keep going...
-
-```
-
-## 3. Politics and cynicism
+## Politics and cynicism
 
 Have a look at the variable `helpful`. What's the relationship between `helpful` and political party affiliation (`partyid`)? Notice something funny there) What about its relationship with religiosity (`god`)? Age (`age`)?
 
 Since it's hard to interpret "DEPENDS" as an answer, let's focus on whether people are helpful or looking out for selves (the first two options).
 
-First look at how `helpful` is coded
-```{r}
-head(gss$helpful)
-levels(gss$helpful)
-```
-
-Since it's hard to interpret "DEPENDS" as the answer, let's focus on whether people are helpful or looking out for selves (the first two options), so remove the "depends" respondents. Then create a variable "Others_are_selfish" which is coded as 1 when helpful=="LOOKOUT FOR SELF" and 0 for helpful=="HELPFUL". Now look at the relationship with `partyid`. Return the number of respondents in each `partyid` group as well.
 
 ```{r}
 
 ```
-Looks like "independents" (libertarians perhaps?) think people are most likely to be looking out for themselves...
 
 
-## 4. Human evolution and elephant evolution
-Half of the respondents were asked about human evolution (`evolved`). The other were asked about non-human animal evolution (`evolved2`). How does the difference between endorsing `evolved` and `evolved2` vary by education? Political affiliation? 
+## Individual income, family income, and marital happiness
+The data includes not only the respondent's income (`realrinc`), but also the family income (`realinc`) This allows you to figure out how much other members of the family (typically the spouse) is earning. Do respondents whose income is a larger proportion of the family income have a different marital satisfaction (`hapmar`)? 
+
 ```{r}
 
 ```
+
 
 

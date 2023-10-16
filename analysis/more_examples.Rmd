@@ -1,0 +1,66 @@
+---
+title: "Some more examples"
+author: "Gary Lupyan"
+date: "10/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(gssr)
+data(gss_all)
+```
+
+
+
+## Something else that's interesting
+
+The GSS includes a handful of _general science_ questions. Let's combine them to create a summed science score and see what predicts it.
+
+Let's start by making a data-frame with the variables we need
+```{r}
+science_knowledge_df <- gss %>% 
+  mutate(college_science_classes = 
+           case_when(colsci=="No" ~ 0,
+                     colsci=="Yes" ~ as.numeric(colscinm))) %>%
+  mutate(viruses = as.numeric(viruses=="False"),
+         earthsun = as.numeric(earthsun=="Earth around sun"),
+         electron = as.numeric(electron=="True"),
+         lasers = as.numeric(lasers=="False"),
+         condrift = as.numeric(lasers=="True"),
+         radioact = as.numeric(radioact=="False"),
+         hotcore = as.numeric(hotcore=="True")) %>%
+        row_means(viruses,earthsun,electron,lasers,condrift,radioact,hotcore,var="sci_sum",n=3)
+  #we could create a sum variable with mutate.. sci_sum = viruses+earthsun etc., but row_sums is preferable and deals with missing values in a more flexible way
+```
+
+### Let's compare some models {.tabset}
+
+#### Science knowledge from highest degree
+```{r}
+  science_knowledge_df %>% lm(sci_sum~as.numeric(degree),data=.) %>% summary
+```
+               
+               
+#### Science knowledge from highest degree and science classes
+```{r}
+science_knowledge_df %>% lm(sci_sum~as.numeric(degree)+college_science_classes,data=.) %>% summary
+```
+
+#### Science knowledge from highest degree, science classes, and income
+```{r}
+  science_knowledge_df %>% lm(sci_sum~as.numeric(degree)+college_science_classes+as.numeric(as.character(realrinc)),data=.) %>% summary
+```
+
+### Science knowledge from highest degree, college science classses, income, and wordsum
+```{r}
+  science_knowledge_df %>% lm(sci_sum~as.numeric(degree)+college_science_classes+as.numeric(as.character(realrinc))+as.numeric(wordsum),data=.) %>% summary
+```
+
+#### Science knowledge just from wordsum
+```{r}
+  science_knowledge_df %>% lm(sci_sum~as.numeric(wordsum),data=.) %>% summary
