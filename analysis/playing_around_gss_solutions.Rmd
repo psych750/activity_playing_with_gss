@@ -22,9 +22,9 @@ library(DT)
 
 # Load in data
 
-We're loading in the SPSS-formatted data from GSS year 2016. Need foreign::spss.get to read the data
+We're loading in the SPSS-formatted data from GSS year 2018. Need foreign::spss.get to read the data
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
-gss <- spss.get("../data/GSS2016.sav", use.value.labels=TRUE,lowernames=TRUE)
+gss <- spss.get("../data/GSS2018.sav", use.value.labels=TRUE,lowernames=TRUE)
 ```
 
 # Two things to watch out for when importing data
@@ -52,8 +52,11 @@ gss$age_recoded = gss$age %>%
   fct_recode("90"="89 OR OLDER") %>%
   as.numeric
 
+hist(gss$age_recoded)
+
 mean(gss$age_recoded,na.rm=TRUE)
 ```
+
 Ok.. mean is 32.. seems reasonable? Is it correct though? Let's look at a histogram. What do you notice?
 ```{r}
 hist(gss$age_recoded)
@@ -73,7 +76,7 @@ gss$age_recoded = gss$age %>%
 mean(gss$age_recoded,na.rm=TRUE)
 ```
 
-What's the mean and median income of participants younger than 25 in 2016 dollars? To get 2016 dollars (where these data are from), multiply by 2.19. How many participants are there in this dataset who're younger than 25? 
+What's the mean and median income of participants younger than 25 in 2018 dollars? To get 2018 dollars (where these data are from), multiply realrinc (1986 dollars) by 2.29. 
 
 ```{r}
 gss$age_recoded = gss$age %>% 
@@ -82,10 +85,11 @@ gss$age_recoded = gss$age %>%
   as.numeric
 
 gss <- gss %>% mutate(realrinc = as.numeric(as.character(realrinc)))
-gss <- gss %>% mutate(realrinc_2016 = realrinc*2.19)
+gss <- gss %>% mutate(realrinc_2016 = realrinc*2.29)
 ```
 
-Break it down by the participant's gender (`sex`). Do you notice anything about the mean vs. median for males vs. females? What is this telling you?
+How many participants are there in this dataset who're younger than 25? 
+ Break it down by the participant's gender (`sex`). Do you notice anything about the mean vs. median for males vs. females? What is this telling you?
 
 
 Solution
@@ -124,6 +128,12 @@ gss$happy_rev <- fct_rev(gss$happy)
 ```
 
 
+```{r}
+levels(gss$happy)
+levels(gss$happy_rev)
+```
+
+
 # Do people know that the earth goes around the sun?
 
 Ok, let's switch gearts a bit. Let's look at some relationships between `degree` (participant's education level) and their knowledge of whether the earth goes around the sun or the sun goes around the earth (`earthsun`)
@@ -140,6 +150,7 @@ or more usefully, proportions (notice how we're piping in the `xtabs` output int
 gss %>% xtabs(~degree+earthsun,data=.) %>% prop.table(margin=1) %>% round(2)
 ```
 People with less than a high school degree are at chance on this question... What does this mean?). Is that more or less troubling than that 7% of people with graduate degrees get this wrong? (not a rhetorical question!)
+
 
 ## Contingency tables using `sjmisc`
 
@@ -242,6 +253,12 @@ Feel free to bin age into discrete groups (20-30, 31-40 etc.). The sjmisc packag
 :::
 
 Let's start by looking at happiness broken down by whether people have children
+
+```{r}
+summary(gss$happy)
+```
+
+
 ```{r}
 gss %>% drop_na(happy,childs) %>% 
   mutate(happiness = as.numeric(happy_rev)) %>%
@@ -249,21 +266,24 @@ gss %>% drop_na(happy,childs) %>%
   group_by(has_children) %>% summarize(hapiness=round(mean(happiness),2))
 ```
 
-Looks like people without children are a tiny bit happier. Let's now break it down by the respondent's gender:
+
+Looks like people without children are a bit happier. Let's now break it down by the respondent's gender:
 ```{r}
 gss %>% drop_na(happy,childs) %>% 
   mutate(happiness = as.numeric(happy_rev)) %>%
   mutate(has_children = childs!=0) %>%
-  group_by(has_children,sex) %>% summarize(hapiness=mean(happiness))
+  group_by(sex,has_children) %>% summarize(hapiness=mean(happiness))
 ```
-Men with kids are happier than men without kids. For women it goes in the opposite direction, but by a much smaller margin. Let's look at it by age instead, breaking it down into 40 or younger, between 41-59, and 61+. 
+
+Men with kids are happier than men without kids. For women it's in the same direction, but by a smaller margin. Let's look at it by age instead, breaking it down into 40 or younger, between 41-59, and 61+. 
 
 Let's break age up into three age groups. For readability, we'll rename child==0 as "no children" and child!=0 as 
 "has children" and then `spread` the happiness values by this columns and make a new difference column that highlights the relationship between age and child-having. Positive means people with kids are happier.
 ```{r}
 gss %>% drop_na(age,happy,childs) %>% 
   mutate(age_bin = 
-  case_when(age_recoded <= 40 ~ "<=40",
+  case_when(
+    age_recoded <= 40 ~ "<=40",
   (age_recoded > 40 & age_recoded <= 60) ~ "40-59",
   age_recoded > 60 ~ "over 60")) %>% 
   mutate(child_status = case_when(
@@ -276,7 +296,7 @@ gss %>% drop_na(age,happy,childs) %>%
 
 
 ```
-Looks like the benefit, if it's real, grows with age.
+Looks like the benefit (to the extent it's real), cancels out for older age. This is quite surprising(!) (Likely many confounds here... it's not the effect of having kids per se, but other differences b/w people w/ and w/o kids, especially for the older groups)
 
 
 Let's do one more analysis, breaking it down by gender.
@@ -296,7 +316,7 @@ gss %>% drop_na(age,happy,childs) %>%
     mutate(child_benefit = `has children` - `no children`)
 
 ```
-Huh... quite a different story when looking at it this way. Men with children report higher happiness; women with children, lower happiness pretty much across the board... Though overall, child benefit seems to come in older age.
+Older women w/o kids are quite a bit happier than those with kids? Weird. But have a look at the sample sizes! How big a sample size is this cell?
 
 
 ## Income and happiness
@@ -312,12 +332,12 @@ Remember to convert income to numeric using `as.numeric(as.character(realrinc)))
 ::: {.notebox}
 **Tip**
 
-`realrinc` is income in 1986 dollars. To convert to 2016 dollars, multiply by 2.19. Also make sure you interpret the value of `happy` correctly.
+`realrinc` is income in 1986 dollars. To convert to 2018 dollars, multiply by 2.29. Also make sure you interpret the value of `happy` correctly.
 :::
 
 ```{r}
 gss %>% drop_na(realrinc,happy) %>% 
-  mutate(realrinc = as.numeric(as.character(realrinc))*2.19, happiness = as.numeric(happy_rev)) %>%
+  mutate(realrinc = as.numeric(as.character(realrinc))*2.29, happiness = as.numeric(happy_rev)) %>%
   split_var(realrinc,n=5) %>%
   group_by(realrinc_g) %>%
   summarize(mean_income = round(mean(realrinc)),happiness = round(mean(happiness),2))
@@ -329,7 +349,7 @@ Now let's see how it look broken down by education, splitting up by college or g
 levels(gss$degree) #BACHELOR is level factor 4, so >=4 is greater than college
 
 gss %>% drop_na(realrinc,happy,degree) %>% 
-  mutate(realrinc = as.numeric(as.character(realrinc))*2.19, 
+  mutate(realrinc = as.numeric(as.character(realrinc))*2.29, 
          happy = as.numeric(happy), is_college = as.numeric(degree) >= 4) %>%
   split_var(realrinc,n=5) %>%
   group_by(realrinc_g,is_college) %>%
@@ -339,7 +359,7 @@ gss %>% drop_na(realrinc,happy,degree) %>%
   mutate(college_adv = round(`college degree or higher` - `below a college degree`,2))
 
 ```
-Interesting... looks like there's a small boost to happiness for people with a college degree or higher at each level of income (i.e., adjusting to income to some extent) except for people in the 2nd bin (~20k a year income). 
+Interesting... we see a u-shaped curve here... 
 
 ## Politics and cynicism
 
@@ -376,7 +396,7 @@ gss %>% drop_na(god,helpful) %>%
   group_by(god) %>% 
   summarize(Others_are_selfish = round(mean(helpful=="LOOKOUT FOR SELF"),2),n=n())
 ```
-Looks like more religious people think others are more out for themseleves (can you think of possible confounds here?)
+Looks like more religious people think others areslightly more out for themseleves (can you think of possible confounds here?)
 
 Let's further break it down by partyid, splitting it up into ~democrats and ~republicans
 ```{r}
@@ -387,8 +407,7 @@ gss %>% drop_na(partyid,helpful,god) %>%
     (partyid >= 5 & partyid) <= 7 ~ "republican")) %>%
     group_by(partyid_twoway,god) %>%
   summarize(Others_are_selfish = round(mean(helpful=="LOOKOUT FOR SELF"),2)) %>%
-  pivot_wider(names_from=partyid_twoway,values_from=Others_are_selfish) %>%
-  mutate(democrats_higher_selfish = democratic-republican)
+  pivot_wider(names_from=partyid_twoway,values_from=Others_are_selfish)
 ```
 Interesting... Of the democrats, the more religious ones think most people are selfish. For republicans it's the ones of intermediate religiousity who think people are most selfish.
 
@@ -399,9 +418,9 @@ gss %>% drop_na(helpful,age_recoded) %>%
   filter(helpful != "DEPENDS") %>%
   mutate(decade = signif(age_recoded,1)) %>%
   group_by(decade) %>%
-  summarize(Others_are_selfish = round(mean(helpful=="LOOKOUT FOR SELF"),2))
+  summarize(mean_age=mean(age_recoded),Others_are_selfish = round(mean(helpful=="LOOKOUT FOR SELF"),2),n=n())
 ```
-Wow, talk about big effects! The older people get, the more likely they are to think that people are helpful.  (Is this just a cohort effect? Check the full GSS dataset to find out!).
+Wow, talk about big effects! The older people get, the more likely they are to think that people are helpful.  (Is this just a cohort effect, or is it really about age? You can check the full GSS dataset to find out!).
 
 
 ## Individual income, family income, and marital happiness
@@ -412,8 +431,8 @@ Let's do this in two ways. First, let's look at the mean proportion of the respo
 levels(gss$hapmar)
 gss %>% drop_na(realrinc,realinc,hapmar) %>% 
   mutate(
-    indiv_income = as.numeric(as.character(realrinc))*2.19,
-    familiy_income = as.numeric(as.character(realinc))*2.19,
+    indiv_income = as.numeric(as.character(realrinc))*2.29,
+    familiy_income = as.numeric(as.character(realinc))*2.29,
     r_rel_t_fam = indiv_income/familiy_income) %>%
   group_by(hapmar) %>%
   summarize(r_rel_t_fam = mean(r_rel_t_fam),n=n())
@@ -426,8 +445,8 @@ Let's also include the mean respondent and family income levels as columns.
 gss %>% drop_na(realrinc,realinc,hapmar) %>% 
   mutate(
     hapmar_rev = fct_rev(hapmar),
-    indiv_income = as.numeric(as.character(realrinc))*2.19,
-    family_income = as.numeric(as.character(realinc))*2.19,
+    indiv_income = as.numeric(as.character(realrinc))*2.29,
+    family_income = as.numeric(as.character(realinc))*2.29,
     rel_income = indiv_income/family_income) %>%
   mutate(rel_income_bin = case_when(rel_income >.5 ~ ">50%",
                                 rel_income <= .5 ~ "<=50%")) %>%
@@ -448,16 +467,15 @@ gss %>% drop_na(degree) %>% group_by(degree) %>%
                evolved_elephants = mean(as.numeric(evolved2=="True"),na.rm=TRUE),
                diff_humans_elephants = evolved_humans - evolved_elephants,n=n())
 ```
-Looks the percent of people endorsing both human and animal (technically, elephants) evolution increases with education, but importantly, the difference between the two shrinks somewhat.  Now let's look at it by politics:
+Across all education levels, people endorse elephant evolution more than human evolution. The diference is somewhat smaller for the more educated respondents though.
 
 ```{r}
 gss %>% drop_na(polviews) %>% group_by(polviews) %>%
   summarize(evolved_humans = mean(as.numeric(evolved=="True"),na.rm=TRUE), 
                evolved_elephants = mean(as.numeric(evolved2=="True"),na.rm=TRUE),
                diff_humans_elephants = evolved_humans - evolved_elephants,n=n())
-
 ```
-Pretty striking...  Endorsement of human evolution plummets from 93% to 19% as we go from liberal to conservative while endorsement of elephant evolution barely changes. Also check out the extremely liberal group. In this group 93% endorse human evolution, but only 81% endorse elephant evolution... hmmm.
+Pretty striking...  Endorsement of human evolution plummets as we go from liberal to conservative while endorsement of elephant evolution doesn't change much 
 
 
 ## Helper functions
