@@ -1,7 +1,7 @@
 ---
 title: "Examples of wrangling GSS data"
 author: "Gary Lupyan"
-date: "10/19/2021"
+date: "10/20/2023"
 output: 
   html_document:
     toc: yes
@@ -429,22 +429,33 @@ The data includes not only the respondent's income (`realrinc`), but also the fa
 Let's do this in two ways. First, let's look at the mean proportion of the respondent's relative to family income for the three levels for which `hapmar` is defined:
 ```{r}
 levels(gss$hapmar)
+```
+
+Once again, the coding is reversed making it counterintuitive to iterpret. So let's flip it back around
+
+```{r}
+gss$hapmar_rev <- fct_rev(gss$hapmar)
+
+```
+
+
+```{r}
 gss %>% drop_na(realrinc,realinc,hapmar) %>% 
   mutate(
     indiv_income = as.numeric(as.character(realrinc))*2.29,
     familiy_income = as.numeric(as.character(realinc))*2.29,
     r_rel_t_fam = indiv_income/familiy_income) %>%
-  group_by(hapmar) %>%
+  group_by(hapmar_rev) %>%
   summarize(r_rel_t_fam = mean(r_rel_t_fam),n=n())
 
 ```
-Surprisingly, only 30 people for whom data are available indicated that they're not too happy in their marriage! In this small group, it looks like the respondent is earning a larger share of the family's income. Let's now break it down by men/women respondent's and those earning more vs. less than 50% of family incomeand look at the average reported marital happiness. 
+
+Surprisingly, only 20 people for whom data are available indicated that they're not too happy in their marriage! In this small group, it looks like the respondent is earning a slightly larger share of the family's income. Let's now break it down by men/women respondent's and those earning more vs. less than 50% of family income and look at the average reported marital happiness. 
 
 Let's also include the mean respondent and family income levels as columns.
 ```{r}
-gss %>% drop_na(realrinc,realinc,hapmar) %>% 
+gss %>% drop_na(realrinc,realinc,hapmar_rev) %>% 
   mutate(
-    hapmar_rev = fct_rev(hapmar),
     indiv_income = as.numeric(as.character(realrinc))*2.29,
     family_income = as.numeric(as.character(realinc))*2.29,
     rel_income = indiv_income/family_income) %>%
@@ -457,7 +468,8 @@ gss %>% drop_na(realrinc,realinc,hapmar) %>%
             marital_happiness = mean(as.numeric(hapmar_rev)),
             n=n())
 ```
-Couple observations: Men who earn >50% of the family income earn quite a bit more as individuals than women who earn more than 50% of the family income. The group with the largest family income are those in which men earn <= 50% of the income (on average men here are contributing just 32% of family income). Looking at marital happiness, the happiest group seems to be the one where men are earning <=50% of the income while the least happy is the one where women are earning >50% of the income (assuming all these marriages are between men and women). (fwif, none of these trends are reliable... Marital happiness is only very slightly related to family income.. bit more so to `finrela` and does not depend on the sex of the respondent). What about having children?
+Couple observations: Men who earn >50% of the family income earn quite a bit more as individuals than women who earn >50% of the family income. As households, the highest earning group is one in which men earn <=50% though. Looking at marital happiness, the happiest group seems to be the one where men are earning >50% of the income and women who are earning <=50%. fwiw, these are all small non-reliable trends. Although individual happiness is associated with income, marital happiness, it seems, is not. 
+
 
 ## Human evolution and elephant evolution
 Half of the respondents were asked about human evolution (`evolved`). The other were asked about non-human animal evolution (`evolved2`). How does the difference between endorsing `evolved` and `evolved2` vary by education? Political affiliation? 

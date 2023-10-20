@@ -11,7 +11,7 @@
 
 <meta name="author" content="Gary Lupyan" />
 
-<meta name="date" content="2021-10-19" />
+<meta name="date" content="2023-10-20" />
 
 <title>Examples of wrangling GSS data</title>
 
@@ -4069,7 +4069,7 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">Examples of wrangling GSS data</h1>
 <h4 class="author">Gary Lupyan</h4>
-<h4 class="date">10/19/2021</h4>
+<h4 class="date">10/20/2023</h4>
 
 </div>
 
@@ -4385,8 +4385,8 @@ below a college degree:</p>
   datatable(options = list(pageLength = 20)) #check this out in a browser!</code></pre>
 <pre><code>## `summarise()` has grouped output by &#39;polviews&#39;. You can override using the
 ## `.groups` argument.</code></pre>
-<div id="htmlwidget-724e06bd4c6046df5b3a" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-724e06bd4c6046df5b3a">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14"],["EXTREMELY LIBERAL","EXTREMELY LIBERAL","LIBERAL","LIBERAL","SLIGHTLY LIBERAL","SLIGHTLY LIBERAL","MODERATE","MODERATE","SLGHTLY CONSERVATIVE","SLGHTLY CONSERVATIVE","CONSERVATIVE","CONSERVATIVE","EXTRMLY CONSERVATIVE","EXTRMLY CONSERVATIVE"],[false,true,false,true,false,true,false,true,false,true,false,true,false,true],[0.57,0.94,0.71,0.94,0.68,0.6,0.53,0.58,0.49,0.58,0.4,0.25,0.38,0.33],[14,16,28,31,38,15,133,53,49,26,57,28,16,3]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>polviews<\/th>\n      <th>college_or_more<\/th>\n      <th>humans_evolved<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":20,"columnDefs":[{"className":"dt-right","targets":[3,4]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[10,20,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-5d312c743c8393426cca" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-5d312c743c8393426cca">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14"],["EXTREMELY LIBERAL","EXTREMELY LIBERAL","LIBERAL","LIBERAL","SLIGHTLY LIBERAL","SLIGHTLY LIBERAL","MODERATE","MODERATE","SLGHTLY CONSERVATIVE","SLGHTLY CONSERVATIVE","CONSERVATIVE","CONSERVATIVE","EXTRMLY CONSERVATIVE","EXTRMLY CONSERVATIVE"],[false,true,false,true,false,true,false,true,false,true,false,true,false,true],[0.57,0.94,0.71,0.94,0.68,0.6,0.53,0.58,0.49,0.58,0.4,0.25,0.38,0.33],[14,16,28,31,38,15,133,53,49,26,57,28,16,3]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>polviews<\/th>\n      <th>college_or_more<\/th>\n      <th>humans_evolved<\/th>\n      <th>n<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":20,"columnDefs":[{"className":"dt-right","targets":[3,4]},{"orderable":false,"targets":0}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[10,20,25,50,100]}},"evals":[],"jsHooks":[]}</script>
 <p><strong>(notice the small Ns in some cells)</strong></p>
 <p>This is the kind of data that’s perfect for graphing to look at
 interactions. But we’re examining it in table form, we can pivot it to
@@ -4751,30 +4751,32 @@ of the respondent’s relative to family income for the three levels for
 which <code>hapmar</code> is defined:</p>
 <pre class="r"><code>levels(gss$hapmar)</code></pre>
 <pre><code>## [1] &quot;VERY HAPPY&quot;    &quot;PRETTY HAPPY&quot;  &quot;NOT TOO HAPPY&quot;</code></pre>
+<p>Once again, the coding is reversed making it counterintuitive to
+iterpret. So let’s flip it back around</p>
+<pre class="r"><code>gss$hapmar_rev &lt;- fct_rev(gss$hapmar)</code></pre>
 <pre class="r"><code>gss %&gt;% drop_na(realrinc,realinc,hapmar) %&gt;% 
   mutate(
     indiv_income = as.numeric(as.character(realrinc))*2.29,
     familiy_income = as.numeric(as.character(realinc))*2.29,
     r_rel_t_fam = indiv_income/familiy_income) %&gt;%
-  group_by(hapmar) %&gt;%
+  group_by(hapmar_rev) %&gt;%
   summarize(r_rel_t_fam = mean(r_rel_t_fam),n=n())</code></pre>
 <pre><code>## # A tibble: 3 × 3
-##   hapmar        r_rel_t_fam     n
+##   hapmar_rev    r_rel_t_fam     n
 ##   &lt;fct&gt;               &lt;dbl&gt; &lt;int&gt;
-## 1 VERY HAPPY          0.601   374
+## 1 NOT TOO HAPPY       0.636    20
 ## 2 PRETTY HAPPY        0.567   204
-## 3 NOT TOO HAPPY       0.636    20</code></pre>
-<p>Surprisingly, only 30 people for whom data are available indicated
+## 3 VERY HAPPY          0.601   374</code></pre>
+<p>Surprisingly, only 20 people for whom data are available indicated
 that they’re not too happy in their marriage! In this small group, it
-looks like the respondent is earning a larger share of the family’s
-income. Let’s now break it down by men/women respondent’s and those
-earning more vs. less than 50% of family incomeand look at the average
-reported marital happiness.</p>
+looks like the respondent is earning a slightly larger share of the
+family’s income. Let’s now break it down by men/women respondent’s and
+those earning more vs. less than 50% of family income and look at the
+average reported marital happiness.</p>
 <p>Let’s also include the mean respondent and family income levels as
 columns.</p>
-<pre class="r"><code>gss %&gt;% drop_na(realrinc,realinc,hapmar) %&gt;% 
+<pre class="r"><code>gss %&gt;% drop_na(realrinc,realinc,hapmar_rev) %&gt;% 
   mutate(
-    hapmar_rev = fct_rev(hapmar),
     indiv_income = as.numeric(as.character(realrinc))*2.29,
     family_income = as.numeric(as.character(realinc))*2.29,
     rel_income = indiv_income/family_income) %&gt;%
@@ -4798,17 +4800,13 @@ columns.</p>
 ## 4 FEMALE &gt;50%               0.739       81137.       108310.          2.50   123
 ## # … with abbreviated variable name ¹​marital_happiness</code></pre>
 <p>Couple observations: Men who earn &gt;50% of the family income earn
-quite a bit more as individuals than women who earn more than 50% of the
-family income. The group with the largest family income are those in
-which men earn &lt;= 50% of the income (on average men here are
-contributing just 32% of family income). Looking at marital happiness,
-the happiest group seems to be the one where men are earning &lt;=50% of
-the income while the least happy is the one where women are earning
-&gt;50% of the income (assuming all these marriages are between men and
-women). (fwif, none of these trends are reliable… Marital happiness is
-only very slightly related to family income.. bit more so to
-<code>finrela</code> and does not depend on the sex of the respondent).
-What about having children?</p>
+quite a bit more as individuals than women who earn &gt;50% of the
+family income. As households, the highest earning group is one in which
+men earn &lt;=50% though. Looking at marital happiness, the happiest
+group seems to be the one where men are earning &gt;50% of the income
+and women who are earning &lt;=50%. fwiw, these are all small
+non-reliable trends. Although individual happiness is associated with
+income, marital happiness, it seems, is not.</p>
 </div>
 <div id="human-evolution-and-elephant-evolution" class="section level2">
 <h2>Human evolution and elephant evolution</h2>

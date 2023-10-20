@@ -1,7 +1,7 @@
 ---
 title: "Examples of wrangling GSS data"
 author: "Gary Lupyan"
-date: "10/19/2021"
+date: "10/19/2023"
 output: 
   html_document:
     toc: yes
@@ -51,6 +51,8 @@ What about this? Let's just assume that those >89 are 90. They're not, but it's 
 gss$age_recoded = gss$age %>% 
   fct_recode("90"="89 OR OLDER") %>%
   as.numeric
+
+hist(gss$age_recoded)
 
 mean(gss$age_recoded,na.rm=TRUE)
 ```
@@ -126,6 +128,12 @@ gss$happy_rev <- fct_rev(gss$happy)
 ```
 
 
+```{r}
+levels(gss$happy)
+levels(gss$happy_rev)
+```
+
+
 # Do people know that the earth goes around the sun?
 
 Ok, let's switch gearts a bit. Let's look at some relationships between `degree` (participant's education level) and their knowledge of whether the earth goes around the sun or the sun goes around the earth (`earthsun`)
@@ -142,6 +150,7 @@ or more usefully, proportions (notice how we're piping in the `xtabs` output int
 gss %>% xtabs(~degree+earthsun,data=.) %>% prop.table(margin=1) %>% round(2)
 ```
 People with less than a high school degree are at chance on this question... What does this mean?). Is that more or less troubling than that 7% of people with graduate degrees get this wrong? (not a rhetorical question!)
+
 
 ## Contingency tables using `sjmisc`
 
@@ -243,11 +252,6 @@ Note
 Feel free to bin age into discrete groups (20-30, 31-40 etc.). The sjmisc package has nice functions for this. See the cheat sheet.
 :::
 
-```{r}
-
-```
-
-
 ## Income and happiness
 
 What's the relationship between respondent's income (`realrinc`) and happiness (`happy`)? Use `sjmisc::split_var` to bin income into quintiles (i.e., 5 equal groups). How does this relationship vary for people who have a college degree or higher vs. people who don't? 
@@ -260,12 +264,10 @@ Remember to convert income to numeric using `as.numeric(as.character(realrinc)))
 
 ::: {.notebox}
 **Tip**
+
 `realrinc` is income in 1986 dollars. To convert to 2018 dollars, multiply by 2.29. Also make sure you interpret the value of `happy` correctly.
 :::
 
-```{r}
-
-```
 
 ## Politics and cynicism
 
@@ -274,17 +276,12 @@ Have a look at the variable `helpful`. What's the relationship between `helpful`
 Since it's hard to interpret "DEPENDS" as an answer, let's focus on whether people are helpful or looking out for selves (the first two options).
 
 
-```{r}
-
-```
-
 
 ## Individual income, family income, and marital happiness
 The data includes not only the respondent's income (`realrinc`), but also the family income (`realinc`) This allows you to figure out how much other members of the family (typically the spouse) is earning. Do respondents whose income is a larger proportion of the family income have a different marital satisfaction (`hapmar`)? 
 
-```{r}
-
-```
+## Human evolution and elephant evolution
+Half of the respondents were asked about human evolution (`evolved`). The other were asked about non-human animal evolution (`evolved2`). How does the difference between endorsing `evolved` and `evolved2` vary by education? Political affiliation? 
 
 
 
